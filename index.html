@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador FCFS y SPN</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="aplicacion">
+
+  <!-- BARRA SUPERIOR  -->
+  <header class="barra-superior">
+    <div class="barra-izquierda">
+      <div class="contenedor-logo">
+        <svg class="icono-logo" viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="15" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="16" cy="16" r="6" fill="currentColor" opacity=".15"/>
+          <circle cx="16" cy="16" r="3" fill="currentColor"/>
+          <line x1="16" y1="1" x2="16" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="16" y1="25" x2="16" y2="31" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="1" y1="16" x2="7" y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="25" y1="16" x2="31" y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="marca">
+        <h1>Simulador FCFS y SPN</h1>
+      </div>
+    </div>
+
+    <div class="barra-centro">
+      <div class="grupo-politica">
+        <button class="boton-politica activo" id="botonFCFS" onclick="App.cambiarPolitica('FCFS')">FCFS</button>
+        <button class="boton-politica" id="botonSPN" onclick="App.cambiarPolitica('SPN')">SPN</button>
+      </div>
+    </div>
+
+    <div class="barra-derecha">
+      <!-- Generador de procesos aleatorios -->
+      <div class="grupo-generar">
+        <span class="etiqueta-generar">Generar</span>
+        <input type="number" id="cantidadProcesos" class="entrada-cantidad" value="6" min="1" max="5000" title="Cantidad de procesos a generar">
+        <button class="boton-pequeño" onclick="App.cargarEjemplo()" title="Generar procesos aleatorios">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        </button>
+      </div>
+
+      <!-- Separador visual -->
+      <div class="separador"></div>
+
+      <!-- Cargar archivo CSV -->
+      <label class="boton cargar-csv" title="Cargar archivo CSV desde el equipo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Subir CSV
+        <input type="file" accept=".csv,.txt" onchange="App.cargarArchivo(event)">
+      </label>
+
+      <!-- Editor de datos manual -->
+      <button class="boton" onclick="App.alternarEditor()" id="botonEditor" title="Editar datos manualmente">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Editar
+      </button>
+
+      <div class="separador"></div>
+
+      <!-- Botones principales -->
+      <button class="boton primario" onclick="App.simular()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        Simular
+      </button>
+      <button class="boton fantasma" onclick="App.limpiar()" title="Limpiar simulación">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="1 4 1 10 7 10"/>
+          <path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- PANEL EDITOR (colapsable)  -->
+  <div class="panel-editor" id="panelEditor" style="display:none">
+    <div class="editor-interior">
+      <div class="etiqueta-editor">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        Datos CSV — <code>proceso, llegada, duracion</code>
+      </div>
+      <div class="fila-editor">
+        <textarea id="entradaCSV" spellcheck="false" placeholder="proceso,llegada,duracion&#10;P1,0,5&#10;P2,1,3&#10;P3,2,8&#10;P4,4,2"></textarea>
+        <div class="estado-editor">
+          <div id="infoArchivo" class="info-archivo"></div>
+          <div id="contadorFilas" class="contador-filas"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALERTA  -->
+  <div id="cajaAlerta" style="display:none" class="barra-alerta"></div>
+
+  <!-- FRANJA DE MÉTRICAS-->
+  <div id="franjaMetricas" class="franja-metricas" style="display:none">
+    <div id="cuadriculaMetricas" class="fila-metricas"></div>
+  </div>
+
+  <!--  ÁREA DE TRABAJO  -->
+  <main class="area-trabajo">
+
+    <!-- Diagrama de Gantt -->
+    <section class="panel" id="panelGantt" style="display:none">
+      <div class="encabezado-panel">
+        <div class="grupo-titulo-panel">
+          <span class="insignia-politica" id="insigniaPolitica">FCFS</span>
+        </div>
+        <div class="controles-gantt">
+          <span id="infoGantt" class="info-gantt"></span>
+          <div class="grupo-control">
+            <button class="boton-control" onclick="Gantt.irA(0)" title="Ir al inicio">⟪</button>
+            <button class="boton-control" onclick="Gantt.desplazar(-5)" title="Retroceder 5">‹‹</button>
+            <button class="boton-control" onclick="Gantt.desplazar(-1)" title="Retroceder 1">‹</button>
+            <button class="boton-control" onclick="Gantt.desplazar(1)" title="Avanzar 1">›</button>
+            <button class="boton-control" onclick="Gantt.desplazar(5)" title="Avanzar 5">››</button>
+            <button class="boton-control" onclick="Gantt.irAlFinal()" title="Ir al final">⟫</button>
+          </div>
+          <div class="grupo-control grupo-zoom">
+            <span class="etiqueta-control">Zoom</span>
+            <button class="boton-control" onclick="Gantt.aplicarZoom(-1)">−</button>
+            <span id="nivelZoom" class="valor-zoom">1.0×</span>
+            <button class="boton-control" onclick="Gantt.aplicarZoom(1)">+</button>
+          </div>
+        </div>
+      </div>
+
+      <canvas id="lienzoGantt"></canvas>
+
+      <div class="barra-pasos">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="etiqueta-control">Paso</span>
+        <input type="range" id="deslizadorPaso" min="0" value="0" step="1" oninput="Gantt.establecerPaso(this.value)">
+        <span id="etiquetaPaso" class="valor-paso">0 / 0</span>
+        <button class="boton-control" onclick="Gantt.avanzarPaso(-1)">−</button>
+        <button class="boton-control" onclick="Gantt.avanzarPaso(1)">+</button>
+      </div>
+
+      <div id="leyenda" class="leyenda"></div>
+    </section>
+
+    <!-- Tabla de resultados -->
+    <section class="panel" id="panelTabla" style="display:none">
+      <div class="encabezado-panel">
+        <div class="acciones-tabla">
+          <div class="contenedor-busqueda">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="cajaBusqueda" placeholder="Buscar proceso…" oninput="Table.filtrar(this.value)" class="entrada-busqueda">
+          </div>
+          <button class="boton" onclick="Table.exportarCSV()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exportar
+          </button>
+        </div>
+      </div>
+
+      <div class="contenedor-tabla">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="Table.ordenar('proceso')">Proceso <span class="icono-orden">⇅</span></th>
+              <th onclick="Table.ordenar('llegada')">Llegada <span class="icono-orden">⇅</span></th>
+              <th onclick="Table.ordenar('espera')">T. Espera <span class="icono-orden">⇅</span></th>
+              <th onclick="Table.ordenar('retorno')">T. Retorno <span class="icono-orden">⇅</span></th>
+            </tr>
+          </thead>
+          <tbody id="cuerpoDatos"></tbody>
+        </table>
+      </div>
+      <div class="pie-tabla" id="pieTabla"></div>
+    </section>
+
+    <!-- Estado inicial: instrucciones -->
+    <div class="estado-vacio" id="estadoVacio">
+      <div class="pasos-inicio">
+        <div class="ficha-paso">
+          <span class="numero-paso">1</span>
+          <span>Subir CSV <em>o</em> Generar datos</span>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" opacity=".3"><polyline points="9 18 15 12 9 6"/></svg>
+        <div class="ficha-paso">
+          <span class="numero-paso">2</span>
+          <span>Elegir política</span>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" opacity=".3"><polyline points="9 18 15 12 9 6"/></svg>
+        <div class="ficha-paso">
+          <span class="numero-paso">3</span>
+          <span>▶ Simular</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="planificador.js"></script>
+<script src="diagrama.js"></script>
+<script src="tabla.js"></script>
+<script src="aplicacion.js"></script>
+</body>
+</html>
